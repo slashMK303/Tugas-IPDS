@@ -596,7 +596,7 @@ VITE_API_KEY=your_openweathermap_api_key_here
 
 ```javascript
 const apiKey =
-    import.meta.env.VITE_API_KEY || "f68a5ee6d691a3a3134a00809f4a0c9e";
+    import.meta.env.VITE_API_KEY || "xxxxxxxxxxxxxxxxxxxxx";
 ```
 
 3. **Pastikan `.env` ada di `.gitignore`**:
