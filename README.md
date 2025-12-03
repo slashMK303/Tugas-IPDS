@@ -144,18 +144,41 @@ Proses ini akan menginstall:
 
 **Estimasi waktu**: 1-3 menit tergantung koneksi internet
 
-### Langkah 3: Konfigurasi Environment Variables (Opsional)
+### Langkah 3: Konfigurasi Environment Variables (WAJIB)
 
-Untuk keamanan yang lebih baik, buat file `.env` di root directory:
+Aplikasi ini menggunakan environment variables untuk menyimpan API key dengan aman. Buat file `.env` di root directory:
+
+**Windows PowerShell**:
+
+```powershell
+echo VITE_API_KEY=your_api_key_here > .env
+```
+
+**Windows Command Prompt**:
+
+```cmd
+echo VITE_API_KEY=your_api_key_here > .env
+```
+
+**Mac/Linux**:
 
 ```bash
-# Buat file .env
-echo VITE_API_KEY=your_api_key_here > .env
+echo "VITE_API_KEY=your_api_key_here" > .env
 ```
 
 Ganti `your_api_key_here` dengan API key Anda dari OpenWeatherMap.
 
-**Catatan**: Jika tidak membuat file `.env`, API key yang sudah ada di `App.jsx` akan tetap berfungsi untuk development.
+**Contoh file `.env`**:
+
+```env
+VITE_API_KEY=f68a5ee6d691a3a3134a00809f4a0c9e
+```
+
+⚠️ **PENTING**:
+
+-   Tanpa file `.env`, aplikasi **tidak akan berfungsi**
+-   API key harus memiliki prefix `VITE_` agar bisa diakses di Vite
+-   Jangan commit file `.env` ke Git (sudah ada di `.gitignore`)
 
 ---
 
@@ -273,8 +296,8 @@ function App() {
     const [location, setLocation] = useState(""); // Menyimpan input user
     const [error, setError] = useState(""); // Menyimpan pesan error
 
-    // API configuration
-    const apiKey = "f68a5ee6d691a3a3134a00809f4a0c9e";
+    // API configuration dengan environment variable
+    const apiKey = import.meta.env.VITE_API_KEY; // Ambil dari .env file
     const url = `https://api.openweathermap.org/data/2.5/weather?q=${location},ID&units=metric&appid=${apiKey}&lang=id`;
 }
 ```
@@ -283,6 +306,7 @@ function App() {
 
 -   `useState` adalah React Hook untuk membuat state yang reactive
 -   Ketika state berubah, component akan re-render otomatis
+-   `import.meta.env.VITE_API_KEY` mengambil API key dari file `.env`
 -   URL API dibuat dynamic dengan template literal
 
 #### 2. **User Interaction Flow**
@@ -586,27 +610,33 @@ HTML template dengan mounting point:
 
 ### Untuk Development Lokal
 
-1. **Buat file `.env` di root project**:
+Aplikasi ini **sudah dikonfigurasi** untuk menggunakan environment variables.
 
-```bash
-VITE_API_KEY=your_openweathermap_api_key_here
-```
+1. **File `.env` sudah dibuat** (lihat langkah instalasi)
 
-2. **Update `src/App.jsx`**:
+2. **Implementasi di `src/App.jsx`**:
 
 ```javascript
-const apiKey =
-    import.meta.env.VITE_API_KEY || "xxxxxxxxxxxxxxxxxxxxx";
+// API key diambil dari environment variable
+const apiKey = import.meta.env.VITE_API_KEY;
+const url = `https://api.openweathermap.org/data/2.5/weather?q=${location},ID&units=metric&appid=${apiKey}&lang=id`;
 ```
 
-3. **Pastikan `.env` ada di `.gitignore`**:
+3. **File `.env` sudah ada di `.gitignore`**:
 
 ```gitignore
-# Environment variables
+# Environment variables (sudah dikonfigurasi)
 .env
 .env.local
 .env*.local
 ```
+
+### Cara Kerja Environment Variables di Vite
+
+-   **Prefix `VITE_`**: Wajib untuk semua env variables yang diakses di client-side
+-   **`import.meta.env`**: API Vite untuk mengakses environment variables
+-   **Build Time**: Variables di-inject saat build, bukan runtime
+-   **Development**: Auto-reload saat `.env` berubah (perlu restart dev server)
 
 ### Keamanan API Key
 
