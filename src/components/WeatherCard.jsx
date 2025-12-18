@@ -7,13 +7,13 @@ export default function WeatherCard({ latestData, lastUpdate, onRefresh }) {
         <div className="p-6 bg-gradient-to-br from-sky-600/20 to-blue-600/20 backdrop-blur-md rounded-2xl border border-sky-400/30">
             <div className="flex items-center justify-between mb-4">
                 <h2 className="text-2xl font-semibold text-white">
-                    🌍 Data Streaming Solo (Real-time)
+                    Data Streaming Solo
                 </h2>
                 <button
                     onClick={onRefresh}
                     className="px-4 py-2 bg-sky-600 hover:bg-sky-500 hover:cursor-pointer text-white rounded-lg transition-colors text-sm font-medium"
                 >
-                    🔄 Refresh
+                    Refresh
                 </button>
             </div>
 
@@ -52,7 +52,7 @@ export default function WeatherCard({ latestData, lastUpdate, onRefresh }) {
             </div>
 
             <div className="text-xs text-white/40">
-                📍 Solo • Update: {lastUpdate}
+                Solo • Update: {lastUpdate}
             </div>
         </div>
     );

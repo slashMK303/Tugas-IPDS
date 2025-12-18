@@ -116,7 +116,7 @@ export default function WeatherTrend() {
         return (
             <div className="w-full max-w-6xl mx-auto p-6 bg-slate-900/60 backdrop-blur-md rounded-2xl border border-white/10">
                 <h2 className="text-2xl font-semibold text-white mb-4">
-                    📊 Streaming Cuaca Solo
+                    Streaming Cuaca Solo
                 </h2>
                 <p className="text-white/60">Loading data...</p>
             </div>
@@ -127,7 +127,7 @@ export default function WeatherTrend() {
         return (
             <div className="w-full max-w-6xl mx-auto p-6 bg-slate-900/60 backdrop-blur-md rounded-2xl border border-white/10">
                 <h2 className="text-2xl font-semibold text-white mb-4">
-                    📊 Streaming Cuaca Solo (Real-time)
+                    Streaming Cuaca Solo (Real-time)
                 </h2>
                 <p className="text-red-200 bg-red-500/15 p-4 rounded-xl border border-red-500/30">
                     {error} - Data akan tersedia setelah GitHub Actions
@@ -141,7 +141,7 @@ export default function WeatherTrend() {
         return (
             <div className="w-full max-w-6xl mx-auto p-6 bg-slate-900/60 backdrop-blur-md rounded-2xl border border-white/10">
                 <h2 className="text-2xl font-semibold text-white mb-4">
-                    📊 Streaming Cuaca Solo (Real-time)
+                    Streaming Cuaca Solo (Real-time)
                 </h2>
                 <p className="text-white/60">
                     Loading data... Tunggu GitHub Actions collect data pertama
@@ -164,7 +164,7 @@ export default function WeatherTrend() {
             {chartData.length > 1 && (
                 <div className="p-6 bg-slate-900/60 backdrop-blur-md rounded-2xl border border-white/10">
                     <h3 className="text-xl font-semibold text-white mb-6">
-                        📈 Trend Data (12 Update Terakhir - Setiap 5 Menit)
+                        Trend Data (12 Update Terakhir - Setiap 5 Menit)
                     </h3>
 
                     <TemperatureChart data={chartData} />
@@ -172,7 +172,7 @@ export default function WeatherTrend() {
                     <WindSpeedChart data={chartData} />
 
                     <div className="mt-4 text-xs text-white/40">
-                        💾 Data disimpan otomatis setiap 5 menit via GitHub
+                        Data disimpan otomatis setiap 5 menit via GitHub
                         Actions
                     </div>
                 </div>
