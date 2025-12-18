@@ -1,9 +1,9 @@
 name: Weather Data Streaming - Solo
 
-# Trigger workflow setiap jam (UTC 00:00, 01:00, 02:00, dst)
+# Trigger workflow setiap 5 menit
 on:
     schedule:
-        - cron: "0 * * * *" # Every hour
+        - cron: "*/5 * * * *" # Every 5 minutes
     # Allow manual trigger
     workflow_dispatch:
 
