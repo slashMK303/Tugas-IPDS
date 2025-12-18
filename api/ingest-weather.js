@@ -1,8 +1,8 @@
 import process from 'process';
 
-export default async function handler(req, res) {
+module.exports = async (req, res) => {
     // Check CRON_SECRET for security (Vercel Cron adds Authorization header)
-    const authHeader = req?.headers?.authorization || req?.headers?.Authorization;
+    const authHeader = req.headers?.authorization || req.headers?.Authorization;
     if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
         return res.status(401).json({ error: "Unauthorized" });
     }
@@ -41,4 +41,4 @@ export default async function handler(req, res) {
         console.error("Cron job error:", err);
         return res.status(500).json({ error: err.message });
     }
-}
+};
