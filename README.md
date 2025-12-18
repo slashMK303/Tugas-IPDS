@@ -15,6 +15,7 @@ Aplikasi web modern untuk menampilkan informasi cuaca real-time kota-kota di Ind
 -   [Konfigurasi Environment Variables](#konfigurasi-environment-variables)
 -   [Deployment ke Vercel](#deployment-ke-vercel)
 -   [API Reference](#api-reference)
+-   [Streaming Data & Cron Jobs (Vercel)](#streaming-data--cron-jobs-vercel)
 
 ---
 
@@ -833,7 +834,250 @@ GET https://api.openweathermap.org/data/2.5/weather?q=Jakarta,ID&units=metric&ap
 
 ---
 
-## 🎨 Styling & Design System
+## 🔄 Streaming Data & Cron Jobs (Vercel)
+
+### Deskripsi
+
+Project ini dilengkapi dengan serverless endpoint (`/api/ingest-weather.js`) yang memungkinkan **streaming data cuaca otomatis** untuk kota **Solo** menggunakan **Vercel Cron Jobs**. Ini mengimplementasikan fitur **ETL (Extract, Transform, Load)** dengan scheduler.
+
+### Struktur File
+
+```
+Tugas-IPDS/
+├── api/
+│   └── ingest-weather.js    # Serverless endpoint untuk streaming
+├── vercel.json              # Cron job configuration
+└── ... (existing files)
+```
+
+### Fitur Streaming
+
+**File**: [`api/ingest-weather.js`](api/ingest-weather.js)
+
+-   **Extract**: Fetch data cuaca dari OpenWeatherMap API untuk kota Solo
+-   **Transform**: Konversi satuan (m/s ke km/h), parse JSON, tambahkan timestamp
+-   **Load**: Siap untuk insert ke database (BigQuery, Firestore, PostgreSQL, dll)
+-   **Security**: Authorization header check dengan `CRON_SECRET` environment variable
+-   **Scheduling**: Di-trigger otomatis oleh Vercel Cron sesuai jadwal
+
+### Konfigurasi Vercel Cron Job
+
+**File**: [`vercel.json`](vercel.json)
+
+```json
+{
+    "crons": [
+        {
+            "path": "/api/ingest-weather",
+            "schedule": "0 * * * *"
+        }
+    ]
+}
+```
+
+**Schedule Format**: Menggunakan UNIX cron expression
+
+| Expression     | Meaning                               |
+| -------------- | ------------------------------------- |
+| `0 * * * *`    | Setiap jam (every hour)               |
+| `0 0 * * *`    | Setiap hari jam 00:00 (daily)         |
+| `0 */6 * * *`  | Setiap 6 jam                          |
+| `0 9-17 * * *` | Setiap jam dari 9-17 (business hours) |
+| `*/15 * * * *` | Setiap 15 menit                       |
+
+### Setup Cron Job di Vercel (Production)
+
+#### Langkah 1: Pastikan `vercel.json` di Repository
+
+File sudah tersedia di root project:
+
+```json
+{
+    "crons": [
+        {
+            "path": "/api/ingest-weather",
+            "schedule": "0 * * * *"
+        }
+    ]
+}
+```
+
+#### Langkah 2: Tambahkan Environment Variable `CRON_SECRET`
+
+Di Vercel Dashboard:
+
+1. **Project Settings** → **Environment Variables**
+2. **Add New Variable**:
+    - **Name**: `CRON_SECRET`
+    - **Value**: Masukkan secret key sembarang (misal: `super-secret-cron-key-12345`)
+    - **Environment**: Production, Preview, Development
+3. **Save**
+
+#### Langkah 3: Deploy ke Vercel
+
+```bash
+# Push ke GitHub
+git add .
+git commit -m "Add streaming & cron job configuration"
+git push origin main
+
+# Vercel akan otomatis deploy
+```
+
+Vercel akan membaca `vercel.json` dan setup cron jobs otomatis.
+
+#### Langkah 4: Verifikasi Cron Job
+
+1. Buka Vercel Dashboard
+2. Go to **Project** → **Cron Jobs**
+3. Lihat status cron job:
+    - 🟢 Active: Cron job berhasil di-setup
+    - 🔴 Error: Ada masalah dengan configuration
+
+### Response & Logging
+
+#### Success Response
+
+```json
+{
+    "success": true,
+    "data": {
+        "city": "Solo",
+        "temp": 28.5,
+        "humidity": 72,
+        "wind_kmh": 10.8,
+        "weather": "Clouds",
+        "description": "awan tersebar",
+        "timestamp": "2025-12-18T12:00:00.000Z"
+    }
+}
+```
+
+#### Cron Logs
+
+Lihat logs di Vercel Dashboard → **Project** → **Deployments** → **Logs**
+
+Output akan menampilkan:
+
+```
+[12:00:00 UTC] Cron job triggered for /api/ingest-weather
+[12:00:01 UTC] Weather data ingested for streaming: {city: "Solo", temp: 28.5, ...}
+[12:00:02 UTC] Success (status 200)
+```
+
+### Database Integration (Optional)
+
+Untuk load data ke database, tambahkan kode di `api/ingest-weather.js`:
+
+#### BigQuery Example
+
+```javascript
+// Uncomment & configure untuk BigQuery
+const { BigQuery } = require("@google-cloud/bigquery");
+const bigquery = new BigQuery({
+    projectId: process.env.GCP_PROJECT_ID,
+    keyFilename: process.env.GCP_KEY_FILE,
+});
+
+async function insertToBigQuery(data) {
+    const dataset = bigquery.dataset(process.env.BQ_DATASET);
+    const table = dataset.table(process.env.BQ_TABLE);
+
+    await table.insert([data]);
+    console.log("Data inserted to BigQuery");
+}
+
+// Di endpoint:
+await insertToBigQuery(result);
+```
+
+#### Firestore Example
+
+```javascript
+const admin = require("firebase-admin");
+admin.initializeApp();
+const db = admin.firestore();
+
+async function insertToFirestore(data) {
+    await db.collection("weather").add({
+        ...data,
+        createdAt: new Date(),
+    });
+    console.log("Data inserted to Firestore");
+}
+```
+
+### Monitoring & Alerts
+
+#### Enable Alerts di Vercel
+
+1. **Project Settings** → **Monitoring**
+2. **Enable Alerts** untuk:
+    - Cron job failures
+    - High error rates
+    - Performance issues
+
+#### Custom Monitoring (Optional)
+
+Tambahkan webhook untuk alerts:
+
+```javascript
+// Di endpoint, tambahkan:
+if (err) {
+    await fetch(process.env.SLACK_WEBHOOK_URL, {
+        method: "POST",
+        body: JSON.stringify({
+            text: `❌ Cron job error: ${err.message}`,
+        }),
+    });
+}
+```
+
+### Troubleshooting
+
+#### Problem: Cron job tidak di-trigger
+
+**Checklist**:
+
+-   ✅ `vercel.json` ada di root project
+-   ✅ Format JSON valid (gunakan https://jsonlint.com/)
+-   ✅ Path dimulai dengan `/` (e.g., `/api/ingest-weather`)
+-   ✅ Deploy ke production (bukan preview)
+-   ✅ File `/api/ingest-weather.js` ada
+
+**Solution**:
+
+```bash
+# Verify vercel.json syntax
+cat vercel.json
+
+# Re-deploy
+vercel --prod --force
+```
+
+#### Problem: 401 Unauthorized Error
+
+**Penyebab**: `CRON_SECRET` tidak cocok antara code dan environment variable.
+
+**Solution**:
+
+1. Pastikan `process.env.CRON_SECRET` sudah di-set di Vercel
+2. Vercel otomatis menambahkan header `Authorization: Bearer {CRON_SECRET}`
+3. Check logs untuk verify header value
+
+#### Problem: API key error (500)
+
+**Penyebab**: `VITE_API_KEY` tidak di-set untuk production environment.
+
+**Solution**:
+
+Di Vercel Dashboard → Environment Variables → Tambahkan:
+
+-   **Name**: `VITE_API_KEY`
+-   **Value**: API key Anda
+-   **Environment**: Production
+
+---
 
 ### Color Palette
 

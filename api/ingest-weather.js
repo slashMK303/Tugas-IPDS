@@ -1,9 +1,11 @@
-// /api/ingest-weather.js
-// Serverless endpoint for Vercel to fetch weather data for Solo and (optionally) store/process it
-
 export default async function handler(req, res) {
+    // Check CRON_SECRET for security (Vercel adds this header for Cron jobs)
+    if (req.headers.get("Authorization") !== `Bearer ${import.meta.env.CRON_SECRET}`) {
+        return res.status(401).json({ error: "Unauthorized" });
+    }
+
     const city = "Solo,ID";
-    const apiKey = import.meta.env.VITE_API_KEY || import.meta.env.VITE_API_KEY || import.meta.env.VITE_API_KEY;
+    const apiKey = import.meta.env.VITE_API_KEY;
     if (!apiKey) {
         return res.status(500).json({ error: "API key not set in environment variables." });
     }
@@ -17,7 +19,6 @@ export default async function handler(req, res) {
         }
         const data = await response.json();
 
-        // Transform data as needed (example: extract only relevant fields)
         const result = {
             city: data.name,
             temp: data.main.temp,
@@ -28,12 +29,13 @@ export default async function handler(req, res) {
             timestamp: new Date().toISOString(),
         };
 
-        // TODO: Insert to database (e.g., BigQuery) if needed
-        // For now, just return the result
+        // TODO: Insert ke database (misal: BigQuery, Firestore, atau PostgreSQL)
+        // Contoh: await insertToBigQuery(result);
+        console.log("Weather data ingested for streaming:", result);
+
         return res.status(200).json({ success: true, data: result });
     } catch (err) {
+        console.error("Cron job error:", err);
         return res.status(500).json({ error: err.message });
     }
 }
-
-// Vercel: This file must be in /api (project root, not src/) to work as a serverless function.
