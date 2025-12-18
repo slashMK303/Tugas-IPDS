@@ -15,7 +15,9 @@ Aplikasi web modern untuk menampilkan informasi cuaca real-time kota-kota di Ind
 -   [Konfigurasi Environment Variables](#konfigurasi-environment-variables)
 -   [Deployment ke Vercel](#deployment-ke-vercel)
 -   [API Reference](#api-reference)
--   [Streaming Data & Cron Jobs (Vercel)](#streaming-data--cron-jobs-vercel)
+-   [Streaming Data (GitHub Actions)](#streaming-data-github-actions)
+-   [ETL ke BigQuery](#etl-ke-bigquery)
+-   [Visualisasi](#visualisasi)
 
 ---
 
@@ -834,180 +836,156 @@ GET https://api.openweathermap.org/data/2.5/weather?q=Jakarta,ID&units=metric&ap
 
 ---
 
-## 🔄 Streaming Data & Cron Jobs (Vercel)
+## 🔄 Streaming Data (GitHub Actions)
 
-### Deskripsi
+Repository ini menggunakan **GitHub Actions** sebagai scheduler untuk melakukan streaming data cuaca kota **Solo** setiap 5 menit. Data disimpan ke CSV di `data/weather_data_solo.csv`.
 
-Project ini dilengkapi dengan serverless endpoint (`/api/ingest-weather.js`) yang memungkinkan **streaming data cuaca otomatis** untuk kota **Solo** menggunakan **Vercel Cron Jobs**. Ini mengimplementasikan fitur **ETL (Extract, Transform, Load)** dengan scheduler.
+### Lokasi Workflow
 
-### Struktur File
+-   File: [`.github/workflows/weather-streaming.yml`](.github/workflows/weather-streaming.yml)
+-   Trigger: `schedule: cron: "*/5 * * * *"` dan `workflow_dispatch` (manual run)
+-   Branch: `main` (default)
+
+### Izin yang Wajib
+
+-   Repo Settings → Actions → General → Workflow permissions → pilih **Read and write permissions**.
+
+### Secrets yang Digunakan
+
+-   `VITE_API_KEY`: API key OpenWeatherMap (dipakai di langkah fetch).
+
+### Output CSV (Header Bahasa Indonesia)
+
+Kolom yang ditulis:
 
 ```
-Tugas-IPDS/
-├── api/
-│   └── ingest-weather.js    # Serverless endpoint untuk streaming
-├── vercel.json              # Cron job configuration
-└── ... (existing files)
+waktu,kota,negara,suhu_celsius,terasa_seperti_celsius,kelembapan_persen,kecepatan_angin_mps,kecepatan_angin_kmh,cuaca_utama,deskripsi_cuaca,ikon_cuaca,tutupan_awan_persen,tekanan_hpa,visibilitas_m
 ```
 
-### Fitur Streaming
+Contoh baris:
 
-**File**: [`api/ingest-weather.js`](api/ingest-weather.js)
-
--   **Extract**: Fetch data cuaca dari OpenWeatherMap API untuk kota Solo
--   **Transform**: Konversi satuan (m/s ke km/h), parse JSON, tambahkan timestamp
--   **Load**: Siap untuk insert ke database (BigQuery, Firestore, PostgreSQL, dll)
--   **Security**: Authorization header check dengan `CRON_SECRET` environment variable
--   **Scheduling**: Di-trigger otomatis oleh Vercel Cron sesuai jadwal
-
-### Konfigurasi Vercel Cron Job
-
-**File**: [`vercel.json`](vercel.json)
-
-```json
-{
-    "crons": [
-        {
-            "path": "/api/ingest-weather",
-            "schedule": "0 * * * *"
-        }
-    ]
-}
+```
+2025-12-18T16:21:32.638378Z,Solo,ID,20.93,21.45,91,1.43,5.15,Clouds,awan tersebar,03n,42,1009,10000
 ```
 
-**Schedule Format**: Menggunakan UNIX cron expression
+### Jalankan Manual
 
-| Expression     | Meaning                               |
-| -------------- | ------------------------------------- |
-| `0 * * * *`    | Setiap jam (every hour)               |
-| `0 0 * * *`    | Setiap hari jam 00:00 (daily)         |
-| `0 */6 * * *`  | Setiap 6 jam                          |
-| `0 9-17 * * *` | Setiap jam dari 9-17 (business hours) |
-| `*/15 * * * *` | Setiap 15 menit                       |
+1. GitHub → Actions → pilih workflow “Weather Data Streaming - Solo”.
+2. Klik “Run workflow” → pilih branch `main` → Run.
 
-### Setup Cron Job di Vercel (Production)
+### Troubleshooting
 
-#### Langkah 1: Pastikan `vercel.json` di Repository
+-   Penjadwalan GitHub Actions dapat terlambat beberapa menit (umum). Tunggu ±10 menit bila tidak tepat 5 menit.
+-   Pastikan file CSV ada di branch `main`. Untuk reset, hapus file CSV lalu jalankan workflow manual agar membuat header baru.
+-   Lihat log run di tab Actions untuk error (mis. API key invalid).
 
-File sudah tersedia di root project:
+---
 
-```json
-{
-    "crons": [
-        {
-            "path": "/api/ingest-weather",
-            "schedule": "0 * * * *"
-        }
-    ]
-}
-```
+## 🛢️ ETL ke BigQuery
 
-#### Langkah 2: Tambahkan Environment Variable `CRON_SECRET`
+Tujuan: memuat CSV hasil streaming ke tabel BigQuery untuk analisis.
 
-Di Vercel Dashboard:
+### Skema Tabel yang Disarankan
 
-1. **Project Settings** → **Environment Variables**
-2. **Add New Variable**:
-    - **Name**: `CRON_SECRET`
-    - **Value**: Masukkan secret key sembarang (misal: `super-secret-cron-key-12345`)
-    - **Environment**: Production, Preview, Development
-3. **Save**
+Dataset: `weather`
 
-#### Langkah 3: Deploy ke Vercel
+Tabel: `solo_streaming`
+
+Schema:
+
+| Nama Kolom             | Tipe      | Keterangan              |
+| ---------------------- | --------- | ----------------------- |
+| waktu                  | TIMESTAMP | Waktu pengambilan (UTC) |
+| kota                   | STRING    | Nama kota               |
+| negara                 | STRING    | Kode negara (ISO-2)     |
+| suhu_celsius           | FLOAT     | Suhu (°C)               |
+| terasa_seperti_celsius | FLOAT     | Feels like (°C)         |
+| kelembapan_persen      | FLOAT     | Kelembapan (%)          |
+| kecepatan_angin_mps    | FLOAT     | Kecepatan angin (m/s)   |
+| kecepatan_angin_kmh    | FLOAT     | Kecepatan angin (km/h)  |
+| cuaca_utama            | STRING    | Kategori cuaca          |
+| deskripsi_cuaca        | STRING    | Deskripsi cuaca (ID)    |
+| ikon_cuaca             | STRING    | Kode ikon OWM           |
+| tutupan_awan_persen    | FLOAT     | Tutupan awan (%)        |
+| tekanan_hpa            | FLOAT     | Tekanan udara (hPa)     |
+| visibilitas_m          | INTEGER   | Jarak pandang (meter)   |
+
+### Opsi Load
+
+1. Import langsung file CSV dari GitHub (manual):
 
 ```bash
-# Push ke GitHub
-git add .
-git commit -m "Add streaming & cron job configuration"
-git push origin main
+bq mk --dataset weather
+bq mk --table weather.solo_streaming waktu:TIMESTAMP,kota:STRING,negara:STRING,suhu_celsius:FLOAT,terasa_seperti_celsius:FLOAT,kelembapan_persen:FLOAT,kecepatan_angin_mps:FLOAT,kecepatan_angin_kmh:FLOAT,cuaca_utama:STRING,deskripsi_cuaca:STRING,ikon_cuaca:STRING,tutupan_awan_persen:FLOAT,tekanan_hpa:FLOAT,visibilitas_m:INTEGER
 
-# Vercel akan otomatis deploy
+bq load --autodetect --replace \
+  weather.solo_streaming \
+  "https://raw.githubusercontent.com/slashMK303/Tugas-IPDS/main/data/weather_data_solo.csv" \
+  waktu:TIMESTAMP,kota:STRING,negara:STRING,suhu_celsius:FLOAT,terasa_seperti_celsius:FLOAT,kelembapan_persen:FLOAT,kecepatan_angin_mps:FLOAT,kecepatan_angin_kmh:FLOAT,cuaca_utama:STRING,deskripsi_cuaca:STRING,ikon_cuaca:STRING,tutupan_awan_persen:FLOAT,tekanan_hpa:FLOAT,visibilitas_m:INTEGER
 ```
 
-Vercel akan membaca `vercel.json` dan setup cron jobs otomatis.
+2. Otomatis lewat GitHub Actions (tambahkan langkah `gcloud`):
 
-#### Langkah 4: Verifikasi Cron Job
+-   Siapkan service account JSON sebagai secret, mis. `GCP_SA_KEY`.
+-   Tambahkan job tambahan setelah fetch untuk menjalankan `bq load`.
 
-1. Buka Vercel Dashboard
-2. Go to **Project** → **Cron Jobs**
-3. Lihat status cron job:
-    - 🟢 Active: Cron job berhasil di-setup
-    - 🔴 Error: Ada masalah dengan configuration
+Contoh langkah di workflow:
 
-### Response & Logging
+```yaml
+- name: Setup gcloud
+  uses: google-github-actions/setup-gcloud@v2
+  with:
+      service_account_key: ${{ secrets.GCP_SA_KEY }}
+      project_id: ${{ secrets.GCP_PROJECT_ID }}
 
-#### Success Response
-
-```json
-{
-    "success": true,
-    "data": {
-        "city": "Solo",
-        "temp": 28.5,
-        "humidity": 72,
-        "wind_kmh": 10.8,
-        "weather": "Clouds",
-        "description": "awan tersebar",
-        "timestamp": "2025-12-18T12:00:00.000Z"
-    }
-}
+- name: Load CSV to BigQuery
+  run: |
+      bq load --source_format=CSV --replace \
+        weather.solo_streaming \
+        data/weather_data_solo.csv \
+        waktu:TIMESTAMP,kota:STRING,negara:STRING,suhu_celsius:FLOAT,terasa_seperti_celsius:FLOAT,kelembapan_persen:FLOAT,kecepatan_angin_mps:FLOAT,kecepatan_angin_kmh:FLOAT,cuaca_utama:STRING,deskripsi_cuaca:STRING,ikon_cuaca:STRING,tutupan_awan_persen:FLOAT,tekanan_hpa:FLOAT,visibilitas_m:INTEGER
 ```
 
-#### Cron Logs
+---
 
-Lihat logs di Vercel Dashboard → **Project** → **Deployments** → **Logs**
+## 📊 Visualisasi
 
-Output akan menampilkan:
+Visualisasi dilakukan di frontend React menggunakan **Recharts** dan komponen modular.
 
-```
-[12:00:00 UTC] Cron job triggered for /api/ingest-weather
-[12:00:01 UTC] Weather data ingested for streaming: {city: "Solo", temp: 28.5, ...}
-[12:00:02 UTC] Success (status 200)
-```
+### Komponen Utama
 
-### Database Integration (Optional)
+-   [`src/components/WeatherTrend.jsx`](src/components/WeatherTrend.jsx): Orkestrator. Mengambil CSV dari GitHub, mem-parse, mengatur state, auto-refresh tiap 5 menit.
+-   [`src/components/WeatherCard.jsx`](src/components/WeatherCard.jsx): Menampilkan data terbaru (Suhu, Kelembapan, Angin, Cuaca + ikon).
+-   [`src/components/TemperatureChart.jsx`](src/components/TemperatureChart.jsx): Line chart suhu.
+-   [`src/components/HumidityChart.jsx`](src/components/HumidityChart.jsx): Line chart kelembapan.
+-   [`src/components/WindSpeedChart.jsx`](src/components/WindSpeedChart.jsx): Bar chart kecepatan angin.
 
-Untuk load data ke database, tambahkan kode di `api/ingest-weather.js`:
+### Alur Data Visualisasi
 
-#### BigQuery Example
+1. GitHub Actions menulis CSV.
+2. `WeatherTrend.jsx` mem-fetch CSV: `https://raw.githubusercontent.com/<owner>/<repo>/main/data/weather_data_solo.csv`.
+3. Fungsi `parseCSV()` mendukung header Indonesia & Inggris untuk kompatibilitas.
+4. State `latestData` dan `chartData` di-update; komponen anak merender grafik.
 
-```javascript
-// Uncomment & configure untuk BigQuery
-const { BigQuery } = require("@google-cloud/bigquery");
-const bigquery = new BigQuery({
-    projectId: process.env.GCP_PROJECT_ID,
-    keyFilename: process.env.GCP_KEY_FILE,
-});
+### Catatan Library
 
-async function insertToBigQuery(data) {
-    const dataset = bigquery.dataset(process.env.BQ_DATASET);
-    const table = dataset.table(process.env.BQ_TABLE);
+-   **Recharts**: `LineChart`, `BarChart`, `ResponsiveContainer`, `CartesianGrid`, `XAxis`, `YAxis`, `Tooltip`.
+-   **Axios**: dipakai di pencarian cuaca per kota (App.jsx).
+-   **Tailwind CSS**: styling dark, responsif.
+-   **Vite**: dev server + build.
 
-    await table.insert([data]);
-    console.log("Data inserted to BigQuery");
-}
+---
 
-// Di endpoint:
-await insertToBigQuery(result);
-```
+## 🧩 Ringkasan Library & Fungsi Kode
 
-#### Firestore Example
+-   **React**: `useState`, `useEffect` untuk state & lifecycle.
+-   **App.jsx**: `fetchWeather()` melakukan GET ke OpenWeatherMap dengan API key dari `.env`.
+-   **WeatherTrend.jsx**:
+    -   `fetchWeatherData()`: ambil CSV dari GitHub Raw, update state, error handling.
+    -   `parseCSV()`: backward-compatible header (ID/EN), normalisasi angka, hindari `NaN` dan waktu invalid.
+-   **WeatherCard.jsx**: fungsi `getWeatherIcon(code)` → `http://openweathermap.org/img/wn/{code}@2x.png`.
 
-```javascript
-const admin = require("firebase-admin");
-admin.initializeApp();
-const db = admin.firestore();
-
-async function insertToFirestore(data) {
-    await db.collection("weather").add({
-        ...data,
-        createdAt: new Date(),
-    });
-    console.log("Data inserted to Firestore");
-}
-```
-
-### Monitoring & Alerts
+---
 
 #### Enable Alerts di Vercel
 

@@ -22,7 +22,7 @@ export default function WeatherTrend() {
         try {
             setError("");
 
-            // Fetch CSV from GitHub raw content
+            // fetch data
             const response = await fetch(
                 "https://raw.githubusercontent.com/slashMK303/Tugas-IPDS/main/data/weather_data_solo.csv"
             );
@@ -38,11 +38,11 @@ export default function WeatherTrend() {
                 throw new Error("Data kosong");
             }
 
-            // Get latest data point
+            // data terbaru
             const latest = parsedData[parsedData.length - 1];
             setLatestData(latest);
 
-            // Take last 12 records for chart visualization
+            // 12 data
             const recentData = parsedData.slice(-12);
             setChartData(recentData);
             setLastUpdate(new Date().toLocaleTimeString("id-ID"));
@@ -104,7 +104,7 @@ export default function WeatherTrend() {
             return { time, temperature, humidity, windSpeed, weather, icon };
         });
 
-        // Filter out rows with invalid numbers entirely to prevent NaN in UI
+        // Filter row
         return rows.filter((r) =>
             [r.temperature, r.humidity, r.windSpeed].some((x) =>
                 Number.isFinite(x)
@@ -153,7 +153,6 @@ export default function WeatherTrend() {
 
     return (
         <div className="w-full max-w-6xl mx-auto space-y-6">
-            {/* Latest Data Card */}
             <WeatherCard
                 latestData={latestData}
                 lastUpdate={lastUpdate}
