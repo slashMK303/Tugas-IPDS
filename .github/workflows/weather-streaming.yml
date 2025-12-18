@@ -1,0 +1,88 @@
+name: Weather Data Streaming - Solo
+
+# Trigger workflow setiap jam (UTC 00:00, 01:00, 02:00, dst)
+on:
+    schedule:
+        - cron: "0 * * * *" # Every hour
+    # Allow manual trigger
+    workflow_dispatch:
+
+jobs:
+    fetch-weather:
+        runs-on: ubuntu-latest
+
+        steps:
+            - name: Checkout repository
+              uses: actions/checkout@v4
+              with:
+                  fetch-depth: 0
+
+            - name: Set Git config
+              run: |
+                  git config --local user.email "action@github.com"
+                  git config --local user.name "GitHub Action Bot"
+
+            - name: Fetch weather data for Solo
+              env:
+                  API_KEY: ${{ secrets.VITE_API_KEY }}
+              run: |
+                  import json
+                  import csv
+                  from datetime import datetime
+                  import urllib.request
+
+                  # OpenWeatherMap API
+                  city = "Solo"
+                  country = "ID"
+                  api_key = "${{ env.API_KEY }}"
+                  url = f"https://api.openweathermap.org/data/2.5/weather?q={city},{country}&appid={api_key}&units=metric&lang=id"
+
+                  # Fetch data
+                  try:
+                      with urllib.request.urlopen(url) as response:
+                          data = json.loads(response.read().decode())
+                          
+                          # Transform data (ETL)
+                          weather_record = {
+                              'timestamp': datetime.utcnow().isoformat() + 'Z',
+                              'city': data.get('name', 'Solo'),
+                              'country': data.get('sys', {}).get('country', 'ID'),
+                              'temperature_c': data.get('main', {}).get('temp', 0),
+                              'feels_like_c': data.get('main', {}).get('feels_like', 0),
+                              'humidity_percent': data.get('main', {}).get('humidity', 0),
+                              'wind_speed_mps': data.get('wind', {}).get('speed', 0),
+                              'wind_speed_kmh': round(data.get('wind', {}).get('speed', 0) * 3.6, 2),
+                              'weather_main': data.get('weather', [{}])[0].get('main', ''),
+                              'weather_description': data.get('weather', [{}])[0].get('description', ''),
+                              'cloud_coverage_percent': data.get('clouds', {}).get('all', 0),
+                              'pressure_hpa': data.get('main', {}).get('pressure', 0),
+                              'visibility_m': data.get('visibility', 0),
+                          }
+                          
+                          # Save to CSV
+                          csv_file = 'data/weather_data_solo.csv'
+                          file_exists = __import__('os').path.exists(csv_file)
+                          
+                          with open(csv_file, 'a', newline='', encoding='utf-8') as f:
+                              writer = csv.DictWriter(f, fieldnames=weather_record.keys())
+                              if not file_exists:
+                                  writer.writeheader()
+                              writer.writerow(weather_record)
+                          
+                          print(f"✓ Weather data saved: {weather_record['timestamp']}")
+                          print(f"  Temperature: {weather_record['temperature_c']}°C")
+                          print(f"  Humidity: {weather_record['humidity_percent']}%")
+                          print(f"  Wind: {weather_record['wind_speed_kmh']} km/h")
+                          
+                  except Exception as e:
+                      print(f"✗ Error fetching weather data: {str(e)}")
+                      exit(1)
+              shell: python
+
+            - name: Commit and push changes
+              run: |
+                  git add data/weather_data_solo.csv
+                  git diff --quiet && git diff --staged --quiet || (
+                    git commit -m "chore: Update weather data for Solo - $(date -u +'%Y-%m-%d %H:%M:%S') UTC"
+                    git push origin main
+                  )
