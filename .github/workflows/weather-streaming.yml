@@ -44,19 +44,20 @@ jobs:
                           
                           # Transform data (ETL)
                           weather_record = {
-                              'timestamp': datetime.utcnow().isoformat() + 'Z',
-                              'city': data.get('name', 'Solo'),
-                              'country': data.get('sys', {}).get('country', 'ID'),
-                              'temperature_c': data.get('main', {}).get('temp', 0),
-                              'feels_like_c': data.get('main', {}).get('feels_like', 0),
-                              'humidity_percent': data.get('main', {}).get('humidity', 0),
-                              'wind_speed_mps': data.get('wind', {}).get('speed', 0),
-                              'wind_speed_kmh': round(data.get('wind', {}).get('speed', 0) * 3.6, 2),
-                              'weather_main': data.get('weather', [{}])[0].get('main', ''),
-                              'weather_description': data.get('weather', [{}])[0].get('description', ''),
-                              'cloud_coverage_percent': data.get('clouds', {}).get('all', 0),
-                              'pressure_hpa': data.get('main', {}).get('pressure', 0),
-                              'visibility_m': data.get('visibility', 0),
+                              'waktu': datetime.utcnow().isoformat() + 'Z',
+                              'kota': data.get('name', 'Solo'),
+                              'negara': data.get('sys', {}).get('country', 'ID'),
+                              'suhu_celsius': data.get('main', {}).get('temp', 0),
+                              'terasa_seperti_celsius': data.get('main', {}).get('feels_like', 0),
+                              'kelembapan_persen': data.get('main', {}).get('humidity', 0),
+                              'kecepatan_angin_mps': data.get('wind', {}).get('speed', 0),
+                              'kecepatan_angin_kmh': round(data.get('wind', {}).get('speed', 0) * 3.6, 2),
+                              'cuaca_utama': data.get('weather', [{}])[0].get('main', ''),
+                              'deskripsi_cuaca': data.get('weather', [{}])[0].get('description', ''),
+                              'ikon_cuaca': data.get('weather', [{}])[0].get('icon', '01d'),
+                              'tutupan_awan_persen': data.get('clouds', {}).get('all', 0),
+                              'tekanan_hpa': data.get('main', {}).get('pressure', 0),
+                              'visibilitas_m': data.get('visibility', 0),
                           }
                           
                           # Save to CSV
@@ -69,10 +70,10 @@ jobs:
                                   writer.writeheader()
                               writer.writerow(weather_record)
                           
-                          print(f"✓ Weather data saved: {weather_record['timestamp']}")
-                          print(f"  Temperature: {weather_record['temperature_c']}°C")
-                          print(f"  Humidity: {weather_record['humidity_percent']}%")
-                          print(f"  Wind: {weather_record['wind_speed_kmh']} km/h")
+                          print(f"✓ Data cuaca berhasil disimpan: {weather_record['waktu']}")
+                          print(f"  Suhu: {weather_record['suhu_celsius']}°C")
+                          print(f"  Kelembapan: {weather_record['kelembapan_persen']}%")
+                          print(f"  Angin: {weather_record['kecepatan_angin_kmh']} km/h")
                           
                   except Exception as e:
                       print(f"✗ Error fetching weather data: {str(e)}")
