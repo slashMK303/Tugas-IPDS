@@ -1,11 +1,14 @@
+import process from 'process';
+
 export default async function handler(req, res) {
-    // Check CRON_SECRET for security (Vercel adds this header for Cron jobs)
-    if (req.headers.get("Authorization") !== `Bearer ${import.meta.env.CRON_SECRET}`) {
+    // Check CRON_SECRET for security (Vercel Cron adds Authorization header)
+    const authHeader = req?.headers?.authorization || req?.headers?.Authorization;
+    if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
         return res.status(401).json({ error: "Unauthorized" });
     }
 
     const city = "Solo,ID";
-    const apiKey = import.meta.env.VITE_API_KEY;
+    const apiKey = process.env.VITE_API_KEY;
     if (!apiKey) {
         return res.status(500).json({ error: "API key not set in environment variables." });
     }
