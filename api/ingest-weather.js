@@ -3,7 +3,7 @@
 
 export default async function handler(req, res) {
     // Verify CRON_SECRET for security
-    const authHeader = req.headers.get('authorization') || req.headers.get('Authorization');
+    const authHeader = req.headers['authorization'] || req.headers['Authorization'];
     const expectedAuth = `Bearer ${process.env.CRON_SECRET}`;
 
     if (authHeader !== expectedAuth) {
