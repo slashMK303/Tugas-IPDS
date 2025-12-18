@@ -1,5 +1,6 @@
 import { useState } from "react";
 import axios from "axios";
+import WeatherTrend from "./components/WeatherTrend";
 
 function App() {
     const [data, setData] = useState({});
@@ -56,7 +57,7 @@ function App() {
                     <button
                         onClick={fetchWeather}
                         disabled={!location}
-                        className="rounded-xl bg-sky-600 hover:bg-sky-500 disabled:bg-slate-700 disabled:text-white/40 disabled:cursor-not-allowed px-2.5 py-2.5 text-sm font-medium text-white shadow-sm focus:outline-none focus:ring-2 focus:ring-sky-400 transition-colors"
+                        className="rounded-xl bg-sky-600 hover:bg-sky-500 hover:cursor-pointer disabled:bg-slate-700 disabled:text-white/40 disabled:cursor-not-allowed px-2.5 py-2.5 text-sm font-medium text-white shadow-sm focus:outline-none focus:ring-2 focus:ring-sky-400 transition-colors"
                         aria-label="Cari cuaca"
                         title="Cari"
                     >
@@ -135,6 +136,10 @@ function App() {
                         </div>
                     </div>
                 )}
+
+                <div className="mt-8">
+                    <WeatherTrend />
+                </div>
             </div>
         </div>
     );
