@@ -1,3 +1,4 @@
 timestamp,city,country,temperature_c,feels_like_c,humidity_percent,wind_speed_mps,wind_speed_kmh,weather_main,weather_description,cloud_coverage_percent,pressure_hpa,visibility_m
 2025-12-18T14:13:37.531140Z,Solo,ID,21.41,21.96,90,1.5,5.4,Clouds,awan pecah,62,1010,10000
 2025-12-18T14:17:42.523975Z,Solo,ID,21.41,21.96,90,1.5,5.4,Clouds,awan pecah,62,1010,10000
+2025-12-18T14:44:18.701084Z,Solo,ID,21.15,21.7,91,1.67,6.01,Clouds,awan tersebar,47,1009,10000
