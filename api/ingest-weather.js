@@ -1,5 +1,3 @@
-import process from 'process';
-
 module.exports = async (req, res) => {
     // Check CRON_SECRET for security (Vercel Cron adds Authorization header)
     const authHeader = req.headers?.authorization || req.headers?.Authorization;
