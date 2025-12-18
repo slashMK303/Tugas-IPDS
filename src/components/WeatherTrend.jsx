@@ -54,30 +54,62 @@ export default function WeatherTrend() {
     };
 
     const parseCSV = (csvText) => {
-        const lines = csvText.trim().split("\n");
-        const headers = lines[0].split(",");
+        const trimmed = csvText.trim();
+        if (!trimmed) return [];
 
-        return lines.slice(1).map((line) => {
+        const lines = trimmed.split(/\r?\n/);
+        if (lines.length < 2) return [];
+
+        const headers = lines[0].split(",").map((h) => h.trim());
+
+        const rows = lines.slice(1).map((line) => {
             const values = line.split(",");
-            const record = {};
+            const rec = {};
+            headers.forEach((h, i) => (rec[h] = values[i]?.trim()));
 
-            headers.forEach((header, index) => {
-                record[header.trim()] = values[index]?.trim();
-            });
+            const get = (...keys) =>
+                keys
+                    .map((k) => rec[k])
+                    .find((v) => v !== undefined && v !== "");
 
-            // Format for display and chart
-            return {
-                time: new Date(record.waktu).toLocaleTimeString("id-ID", {
-                    hour: "2-digit",
-                    minute: "2-digit",
-                }),
-                temperature: parseFloat(record.suhu_celsius),
-                humidity: parseFloat(record.kelembapan_persen),
-                windSpeed: parseFloat(record.kecepatan_angin_kmh),
-                weather: record.deskripsi_cuaca || record.cuaca_utama || "N/A",
-                icon: record.ikon_cuaca || "01d", // Default icon
-            };
+            const waktuRaw = get("waktu", "timestamp");
+            const date = waktuRaw ? new Date(waktuRaw) : null;
+            const time =
+                date && !isNaN(date)
+                    ? date.toLocaleTimeString("id-ID", {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                      })
+                    : "-";
+
+            const temperature = parseFloat(
+                get("suhu_celsius", "temperature_c")
+            );
+            const humidity = parseFloat(
+                get("kelembapan_persen", "humidity_percent")
+            );
+            const windSpeed = parseFloat(
+                get("kecepatan_angin_kmh", "wind_speed_kmh")
+            );
+
+            const weather =
+                get(
+                    "deskripsi_cuaca",
+                    "weather_description",
+                    "cuaca_utama",
+                    "weather_main"
+                ) || "N/A";
+            const icon = get("ikon_cuaca", "weather_icon") || "01d";
+
+            return { time, temperature, humidity, windSpeed, weather, icon };
         });
+
+        // Filter out rows with invalid numbers entirely to prevent NaN in UI
+        return rows.filter((r) =>
+            [r.temperature, r.humidity, r.windSpeed].some((x) =>
+                Number.isFinite(x)
+            )
+        );
     };
 
     if (loading) {
