@@ -836,48 +836,62 @@ GET https://api.openweathermap.org/data/2.5/weather?q=Jakarta,ID&units=metric&ap
 
 ---
 
-## 🔄 Streaming Data (GitHub Actions)
+## 🔄 Streaming Data & Proses ETL (Extract, Transform, Load)
 
-Repository ini menggunakan **GitHub Actions** sebagai scheduler untuk melakukan streaming data cuaca kota **Solo** setiap 5 menit. Data disimpan ke CSV di `data/weather_data_solo.csv`.
+### Di Mana Proses ETL Terjadi?
 
-### Lokasi Workflow
+Proses ETL utama terjadi di workflow GitHub Actions pada file [`.github/workflows/weather-streaming.yml`](.github/workflows/weather-streaming.yml):
 
--   File: [`.github/workflows/weather-streaming.yml`](.github/workflows/weather-streaming.yml)
--   Trigger: `schedule: cron: "*/5 * * * *"` dan `workflow_dispatch` (manual run)
--   Branch: `main` (default)
+#### 1. **Extract**
 
-### Izin yang Wajib
+Data cuaca diambil dari OpenWeatherMap API menggunakan Python (urllib.request) setiap 5 menit.
 
--   Repo Settings → Actions → General → Workflow permissions → pilih **Read and write permissions**.
+#### 2. **Transform**
 
-### Secrets yang Digunakan
+-   Data mentah dari API diubah: satuan angin dikonversi m/s → km/h, waktu diformat ISO, field diubah ke Bahasa Indonesia.
+-   Contoh kode:
+    ```python
+    weather_record = {
+            'waktu': datetime.utcnow().isoformat() + 'Z',
+            'kota': data.get('name', 'Solo'),
+            'negara': data.get('sys', {}).get('country', 'ID'),
+            'suhu_celsius': data.get('main', {}).get('temp', 0),
+            'terasa_seperti_celsius': data.get('main', {}).get('feels_like', 0),
+            'kelembapan_persen': data.get('main', {}).get('humidity', 0),
+            'kecepatan_angin_mps': data.get('wind', {}).get('speed', 0),
+            'kecepatan_angin_kmh': round(data.get('wind', {}).get('speed', 0) * 3.6, 2),
+            'cuaca_utama': data.get('weather', [{}])[0].get('main', ''),
+            'deskripsi_cuaca': data.get('weather', [{}])[0].get('description', ''),
+            'ikon_cuaca': data.get('weather', [{}])[0].get('icon', '01d'),
+            'tutupan_awan_persen': data.get('clouds', {}).get('all', 0),
+            'tekanan_hpa': data.get('main', {}).get('pressure', 0),
+            'visibilitas_m': data.get('visibility', 0),
+    }
+    ```
 
--   `VITE_API_KEY`: API key OpenWeatherMap (dipakai di langkah fetch).
+#### 3. **Load**
 
-### Output CSV (Header Bahasa Indonesia)
+Data hasil transformasi langsung disimpan ke file CSV (`data/weather_data_solo.csv`) dengan header Bahasa Indonesia.
 
-Kolom yang ditulis:
+#### 4. **Transformasi Tambahan di Frontend**
 
-```
-waktu,kota,negara,suhu_celsius,terasa_seperti_celsius,kelembapan_persen,kecepatan_angin_mps,kecepatan_angin_kmh,cuaca_utama,deskripsi_cuaca,ikon_cuaca,tutupan_awan_persen,tekanan_hpa,visibilitas_m
-```
+Saat data CSV diambil oleh React (`WeatherTrend.jsx`), fungsi `parseCSV()` melakukan parsing, konversi tipe data, dan validasi agar siap divisualisasikan.
 
-Contoh baris:
+#### 5. **ETL ke BigQuery (Opsional)**
 
-```
-2025-12-18T16:21:32.638378Z,Solo,ID,20.93,21.45,91,1.43,5.15,Clouds,awan tersebar,03n,42,1009,10000
-```
+Anda dapat memuat file CSV ke BigQuery untuk analisis lebih lanjut (lihat bagian ETL ke BigQuery di bawah).
 
-### Jalankan Manual
+---
 
-1. GitHub → Actions → pilih workflow “Weather Data Streaming - Solo”.
-2. Klik “Run workflow” → pilih branch `main` → Run.
+### Rangkuman Proses
 
-### Troubleshooting
-
--   Penjadwalan GitHub Actions dapat terlambat beberapa menit (umum). Tunggu ±10 menit bila tidak tepat 5 menit.
--   Pastikan file CSV ada di branch `main`. Untuk reset, hapus file CSV lalu jalankan workflow manual agar membuat header baru.
--   Lihat log run di tab Actions untuk error (mis. API key invalid).
+| Tahap     | Lokasi Kode                               | Penjelasan Singkat                             |
+| --------- | ----------------------------------------- | ---------------------------------------------- |
+| Extract   | `.github/workflows/weather-streaming.yml` | Fetch data dari API OWM                        |
+| Transform | `.github/workflows/weather-streaming.yml` | Ubah satuan, format, field Bahasa Indonesia    |
+| Load      | `.github/workflows/weather-streaming.yml` | Simpan ke CSV                                  |
+| Transform | `src/components/WeatherTrend.jsx`         | Parse CSV, konversi tipe, validasi untuk chart |
+| Load      | (opsional) BigQuery, Firestore, dsb       | Import CSV ke database analitik                |
 
 ---
 
